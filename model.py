@@ -27,10 +27,12 @@ class Decoder(nn.Module):
         self.fc = nn.Linear(hidden_size, output_size)
 
     def forward(self, x, hidden, cell):
-        embedding = self.embedding(x)
+        # x: (batch_size)
+        x = x.unsqueeze(1)  # (batch_size, 1)
+        embedding = self.embedding(x)  # (batch_size, 1, emb_size)
 
         output, (hidden, cell) = self.rnn(embedding, (hidden, cell))
-        prediction = self.fc(output.squeeze(1))
+        prediction = self.fc(output.squeeze(1))  # (batch_size, output_size)
 
         return prediction, hidden, cell
 
@@ -51,14 +53,14 @@ class Seq2Seq(nn.Module):
         # encoder_output shape: (batch_size, source_seq_length, hidden_size)
         # hidden shape: (num_layers, batch_size, hidden_size)
         # cell shape: (num_layers, batch_size, hidden_size)
-        inputs = target[:, 0].reshape(-1, 1)  # shape: (batch_size, 1)
+        inputs = target[:, 0]  # (batch_size)
         for t in range(1, target_seq_length):
             output, hidden, cell = self.decoder(inputs, hidden, cell)
             outputs[:, t, :] = output
             use_teacher_forcing = torch.rand(1).item() < teacher_forcing_ratio
             if use_teacher_forcing:
-                inputs = target[:, t].reshape(-1, 1)
+                inputs = target[:, t]
             else:
                 top1 = output.argmax(1)
-                inputs = top1.reshape(-1, 1)
+                inputs = top1
         return outputs
